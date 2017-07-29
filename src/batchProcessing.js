@@ -69,7 +69,7 @@ async function prepareSourceData(collection, tickersToInsert) {
 
 function dropTickerCollection(collection) {
 
-  return collection.drop();
+  return collection.drop().catch(e => console.log(e));
 }
 
 function insertTickersIntoDb(collection, tickers) {
