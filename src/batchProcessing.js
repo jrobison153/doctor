@@ -6,58 +6,87 @@ import requestPromise from 'request-promise';
 
 const ObjectID = mongodb.ObjectID;
 
-describe('System Integration Tests for the Batch Processing of Tickers', () => {
+const batchTest = {};
+export default batchTest;
 
-  describe('given tickers are present in the database without chromosomes', () => {
+batchTest.test = () => {
 
-    const url = 'mongodb://localhost:27017/systemintegration';
-    let tickersToInsert;
-    let tickerDb;
+  const url = 'mongodb://localhost:27017/systemintegration';
+  let tickersToInsert;
+  let tickerDb;
 
-    before(() => {
+  return mongodb.MongoClient.connect(url).then((db) => {
 
-      return mongodb.MongoClient.connect(url).then((db) => {
+    tickerDb = db;
+    const collection = tickerDb.collection('tickers');
 
-        tickerDb = db;
-        const collection = tickerDb.collection('tickers');
+    const tickersAsJson = fs.readFileSync(path.join(__dirname, 'tickerData.json'));
+    tickersToInsert = JSON.parse(tickersAsJson);
 
-        const tickersAsJson = fs.readFileSync(path.join(__dirname, 'tickerData.json'));
-        tickersToInsert = JSON.parse(tickersAsJson);
+    return prepareSourceData(collection, tickersToInsert);
+  }, (err) => {
 
-        return prepareSourceData(collection, tickersToInsert);
-      }, (err) => {
+    throw new Error(err);
+  }).then(() => {
 
-        throw new Error(err);
+    return batchProcessTickers().then((responseBody) => {
+
+      const tickerIds = JSON.parse(responseBody);
+
+      expect(tickerIds).to.have.length(10);
+
+      const testDone = new Promise((resolve, reject) => {
+
+        checkAllTickersInDbForChromosome(tickerDb, tickerIds, resolve, reject, 1);
       });
-    });
 
-    describe('when batch processed', () => {
-
-      it('then each ticker is written back to the database with a chromosome', () => {
-
-        return batchProcessTickers().then((responseBody) => {
-
-          const tickerIds = JSON.parse(responseBody);
-
-          expect(tickerIds).to.have.length(10);
-
-          const collection = tickerDb.collection('tickers');
-
-          const findPromises = tickerIds.map((id) => {
-
-            return collection.findOne({ _id: new ObjectID(id) }).then((ticker) => {
-
-              expect(ticker).to.include.keys('chromosome');
-              expect(ticker.chromosome).to.not.be.empty();
-            });
-          });
-
-          return Promise.all(findPromises);
-        });
-      });
+      return testDone;
     });
   });
-});
+};
+
+const checkAllTickersInDbForChromosome = (tickerDb, tickerIds, resolve, reject, attemptNumber) => {
+
+  const collection = tickerDb.collection('tickers');
+
+  Promise.all(tickerIds.map((id) => {
+
+    return verifyTickerHasChromosome(collection, id);
+  })).then(() => {
+
+    resolve('Test Passed, all tickers have a chromosome');
+  }, () => {
+
+    retryOrGiveup(tickerDb, tickerIds, resolve, reject, attemptNumber);
+  });
+};
+
+const verifyTickerHasChromosome = (collection, id) => {
+
+  return collection.findOne({ _id: new ObjectID(id) }).then((ticker) => {
+
+    if (ticker.chromosome && ticker.chromosome !== '') {
+
+      return 0;
+    }
+
+    console.error(`Ticker ${JSON.stringify(ticker)} did not have an expected chromosome`);
+    throw new Error('Ticker did not have a chromosome');
+  });
+};
+
+const retryOrGiveup = (tickerDb, tickerIds, resolve, reject, attemptNumber) => {
+
+  if (attemptNumber <= 10) {
+
+    setTimeout(() => {
+      checkAllTickersInDbForChromosome(tickerDb, tickerIds, resolve, reject, attemptNumber + 1);
+    }, 2000);
+  } else {
+
+    reject('Test Failed, tickers in database did not all have chromosomes');
+  }
+};
 
 async function prepareSourceData(collection, tickersToInsert) {
 
