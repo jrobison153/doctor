@@ -11,7 +11,8 @@ export default batchTest;
 
 batchTest.test = () => {
 
-  const url = 'mongodb://localhost:27017/systemintegration';
+  // eslint-disable-next-line no-use-before-define
+  const url = buildConnectionUrlFromEnv();
   let tickersToInsert;
   let tickerDb;
 
@@ -37,6 +38,7 @@ batchTest.test = () => {
 
       const testDone = new Promise((resolve, reject) => {
 
+        // eslint-disable-next-line no-use-before-define
         checkAllTickersInDbForChromosome(tickerDb, tickerIds, resolve, reject, 1);
       });
 
@@ -45,18 +47,40 @@ batchTest.test = () => {
   });
 };
 
+const buildConnectionUrlFromEnv = () => {
+
+  const host = resolveValueFromEnv('localhost', 'DOCTOR_DB_HOST');
+
+  const port = resolveValueFromEnv('27017', 'DOCTOR_DB_PORT');
+
+  const databaseName = resolveValueFromEnv('systemintegration', 'DOCTOR_DB_NAME');
+
+  const connectionUrl = `mongodb://${host}:${port}/${databaseName}`;
+
+  console.info(`Connecting to mongo database ${connectionUrl}`);
+
+  return connectionUrl;
+};
+
+function resolveValueFromEnv(defaultValue, envVarName) {
+
+  return process.env[envVarName] ? process.env[envVarName] : defaultValue;
+}
+
 const checkAllTickersInDbForChromosome = (tickerDb, tickerIds, resolve, reject, attemptNumber) => {
 
   const collection = tickerDb.collection('tickers');
 
   Promise.all(tickerIds.map((id) => {
 
+    // eslint-disable-next-line no-use-before-define
     return verifyTickerHasChromosome(collection, id);
   })).then(() => {
 
     resolve('Test Passed, all tickers have a chromosome');
   }, () => {
 
+    // eslint-disable-next-line no-use-before-define
     retryOrGiveup(tickerDb, tickerIds, resolve, reject, attemptNumber);
   });
 };
@@ -98,7 +122,7 @@ async function prepareSourceData(collection, tickersToInsert) {
 
 function dropTickerCollection(collection) {
 
-  return collection.drop().catch(e => console.log(e));
+  return collection.drop().catch((e) => { console.info(e); });
 }
 
 function insertTickersIntoDb(collection, tickers) {
@@ -126,7 +150,7 @@ function processTickers() {
 
   const options = {
     method: 'POST',
-    uri: 'http://localhost:8080/chromosomes',
+    uri: `${buildHopperUrlFromEnv()}/chromosomes`,
   };
 
   return requestPromise(options).then((data) => {
@@ -139,11 +163,20 @@ function getProcessedTickers(resourceId) {
 
   const options = {
     method: 'GET',
-    uri: `http://localhost:8080/chromosomes/${resourceId}`,
+    uri: `${buildHopperUrlFromEnv()}/chromosomes/${resourceId}`,
   };
 
   return requestPromise(options).then((data) => {
 
     return data;
   });
+}
+
+function buildHopperUrlFromEnv() {
+
+  const hopperUrl = resolveValueFromEnv('http://localhost:8080', 'HOPPER_URL');
+
+  console.info(`Connecting to hopper via url: ${hopperUrl}`);
+
+  return hopperUrl;
 }

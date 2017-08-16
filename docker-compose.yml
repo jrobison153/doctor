@@ -1,0 +1,23 @@
+version: "3"
+networks:
+  kaching_internal:
+    external: true
+services:
+  doctor:
+    image: doctor
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+    environment:
+       DOCTOR_DB_HOST: mongodb
+       DOCTOR_DB_PORT: 27017
+       DOCTOR_DB_NAME: systemintegration
+       HOPPER_URL: http://hopper:8080
+       PORT: 8082
+    networks:
+      - kaching_internal
+    ports:
+      - 8082

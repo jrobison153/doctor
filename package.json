@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint ./src/**/*.js ./test/**/*.js",
+    "start": "node src/serverWrapper.js",
     "test": "mocha --require babel-register --require babel-polyfill src/**/*.js"
   },
   "repository": {
