@@ -1,3 +1,5 @@
 require('babel-register');
 require('babel-polyfill');
-require('./server');
+const server = require('./server');
+
+server.start();

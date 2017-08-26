@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint ./src/**/*.js ./test/**/*.js",
+    "pre-commit": "npm run lint && npm test",
     "start": "node src/serverWrapper.js",
-    "test": "mocha --require babel-register --require babel-polyfill src/**/*.js"
+    "test": "npm run test:acceptance",
+    "test:acceptance": "mocha --require babel-register --require babel-polyfill test/acceptance/**/*.js",
+    "test:acceptance:watch": "mocha --watch --require babel-register --require babel-polyfill test/acceptance/**/*.js"
   },
   "repository": {
     "type": "git",
@@ -37,5 +40,8 @@
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
     "restify": "^5.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.1.1"
   }
 }
