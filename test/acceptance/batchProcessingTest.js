@@ -1,8 +1,10 @@
 import requestPromise from 'request-promise';
 import { expect } from 'chai';
-import AlwaysPassingTestServiceStub from '../stub/AlwaysPassingTestServiceStub';
-import AlwaysFailingTestServiceStub from '../stub/AlwaysFailingTestServiceStub';
-import AlwaysSystemExceptionTestServiceStub from '../stub/AlwaysSystemExceptionTestServiceStub';
+import TestService from '../../src/TestService';
+import TickerDataSource from '../../src/TickerDataSource';
+import HopperIntegration from '../../src/HopperIntegration';
+import mongoFake from '../../fake/mongo/mongoFake';
+import RequestSpy from '../spy/RequestSpy';
 
 const server = require('../../src/server');
 
@@ -14,14 +16,26 @@ describe('Doctor Acceptance Tests', () => {
     resolveWithFullResponse: true,
   };
 
+  afterEach(() => {
+
+    mongoFake.reset();
+  });
+
   describe('given a healthy Kaching system where batch processing is successful', () => {
 
     describe('when a test is executed', () => {
 
-      beforeEach(() => {
+      beforeEach(async () => {
 
-        const testServiceStub = new AlwaysPassingTestServiceStub();
-        return server.start(testServiceStub);
+        const dataSource = new TickerDataSource(mongoFake);
+
+        await dataSource.connect();
+
+        const requestSpy = new RequestSpy();
+        const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
+
+        const testService = new TestService(dataSource, hopperIntegration);
+        return server.start(testService);
       });
 
       afterEach(() => {
@@ -47,10 +61,26 @@ describe('Doctor Acceptance Tests', () => {
 
     describe('when a test is executed', () => {
 
-      beforeEach(() => {
+      beforeEach(async () => {
 
-        const testServiceStub = new AlwaysFailingTestServiceStub();
-        return server.start(testServiceStub);
+        const fakeMongoDb = await mongoFake.MongoClient.connect();
+        const fakeCollection = fakeMongoDb.collection();
+        fakeCollection.setupForFailedDecoration();
+
+        const dataSource = new TickerDataSource(mongoFake);
+
+        await dataSource.connect();
+
+        const requestSpy = new RequestSpy();
+        const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
+
+        const retryOptions = {
+          attempts: 2,
+          wait: 10,
+        };
+
+        const testService = new TestService(dataSource, hopperIntegration, retryOptions);
+        return server.start(testService);
       });
 
       afterEach(() => {
@@ -67,34 +97,6 @@ describe('Doctor Acceptance Tests', () => {
           const body = JSON.parse(response.body);
 
           expect(body.testStatus).to.equal('failed');
-        });
-      });
-    });
-  });
-
-  describe('given an unhealthy Kaching system where there is a system failure', () => {
-
-    describe('when a test is executed', () => {
-
-      beforeEach(() => {
-
-        const testServiceStub = new AlwaysSystemExceptionTestServiceStub();
-        return server.start(testServiceStub);
-      });
-
-      afterEach(() => {
-
-        server.stop();
-      });
-
-      it('then an HTTP status code 500 is returned', () => {
-
-        return requestPromise(requestOptions).then(() => {
-
-          expect(false).to.equal(true, 'Test should have rejected the promise because of a returned 500 http status');
-        }, (response) => {
-
-          expect(response.statusCode).to.equal(500);
         });
       });
     });

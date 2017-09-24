@@ -1,6 +1,7 @@
 import restify from 'restify';
-import batchTest from './testService';
+import batchTest from './TestService';
 
+// TODO: replace default 8080 with portScanner
 const port = process.env.PORT || 8080;
 
 let restifyServer;
