@@ -1,5 +1,5 @@
 import requestPromise from 'request-promise';
-import { expect } from 'chai';
+import {expect} from 'chai';
 import AlwaysPassingTestServiceStub from '../stub/AlwaysPassingTestServiceStub';
 import AlwaysFailingTestServiceStub from '../stub/AlwaysFailingTestServiceStub';
 import AlwaysSystemExceptionTestServiceStub from '../stub/AlwaysSystemExceptionTestServiceStub';
@@ -18,10 +18,18 @@ describe('Server Tests', () => {
 
     describe('when a successful test is executed', () => {
 
-      beforeEach(() => {
+      let testServiceStub;
+      let response;
+      let body;
 
-        const testServiceStub = new AlwaysPassingTestServiceStub();
-        return server.start(testServiceStub);
+      beforeEach(async () => {
+
+        testServiceStub = new AlwaysPassingTestServiceStub();
+        await server.start(testServiceStub);
+
+        response = await requestPromise(requestOptions);
+
+        body = JSON.parse(response.body);
       });
 
       afterEach(() => {
@@ -29,25 +37,41 @@ describe('Server Tests', () => {
         server.stop();
       });
 
-      it('then an HTTP status code 200 is returned with a test status of passed', () => {
+      it('then an HTTP status code 200 is returned', () => {
 
-        return requestPromise(requestOptions).then((response) => {
+        expect(response.statusCode).to.equal(200);
+      });
 
-          expect(response.statusCode).to.equal(200);
+      it('a test status of passed is returned', () => {
 
-          const body = JSON.parse(response.body);
+        expect(body.testStatus).to.equal('passed');
+      });
 
-          expect(body.testStatus).to.equal('passed');
-        });
+      it('returns the test result msg', () => {
+
+        expect(body.msg).to.match(/.*AlwaysPassingTestServiceStub: of course the test passed/);
+      });
+
+      it('returns the test results summary', () => {
+
+        expect(body.summary).to.deep.equal(testServiceStub.resultsSummary);
       });
     });
 
     describe('when a failing test is executed', () => {
 
-      beforeEach(() => {
+      let testServiceStub;
+      let response;
+      let body;
 
-        const testServiceStub = new AlwaysFailingTestServiceStub();
-        return server.start(testServiceStub);
+      beforeEach(async () => {
+
+        testServiceStub = new AlwaysFailingTestServiceStub();
+        await server.start(testServiceStub);
+
+        response = await requestPromise(requestOptions);
+
+        body = JSON.parse(response.body);
       });
 
       afterEach(() => {
@@ -55,16 +79,19 @@ describe('Server Tests', () => {
         server.stop();
       });
 
-      it('then an HTTP status code 200 is returned with a test status of failed', () => {
+      it('then an HTTP status code 200 is returned', () => {
 
-        return requestPromise(requestOptions).then((response) => {
+        expect(response.statusCode).to.equal(200);
+      });
 
-          expect(response.statusCode).to.equal(200);
+      it('a test status of failed is returned', () => {
 
-          const body = JSON.parse(response.body);
+        expect(body.testStatus).to.equal('failed');
+      });
 
-          expect(body.testStatus).to.equal('failed');
-        });
+      it('returns the test results summary', () => {
+
+        expect(body.summary).to.deep.equal(testServiceStub.resultsSummary);
       });
     });
 

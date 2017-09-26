@@ -35,12 +35,12 @@ function configureResources(server, testService) {
   server.post('/test', (req, resp) => {
 
     try {
-      testService.test().then((msg) => {
+      testService.test().then((passResult) => {
 
-        replyTestSuccessful(resp, msg);
-      }, (e) => {
+        replyTestSuccessful(resp, passResult);
+      }, (failResult) => {
 
-        replyTestFailure(resp, e);
+        replyTestFailure(resp, failResult);
       });
     } catch (error) {
 
@@ -49,11 +49,12 @@ function configureResources(server, testService) {
   });
 }
 
-function replyTestSuccessful(resp, msg) {
+function replyTestSuccessful(resp, result) {
 
   const response = {
     testStatus: 'passed',
-    msg: `Test completed: ${msg}`,
+    msg: `Test completed: ${result.msg}`,
+    summary: result.summary,
   };
 
   resp.send(response);
@@ -66,6 +67,7 @@ function replyTestFailure(resp, e) {
   const response = {
     testStatus: 'failed',
     msg: 'Test failed, check logs for details',
+    summary: e.summary,
   };
 
   resp.send(response);

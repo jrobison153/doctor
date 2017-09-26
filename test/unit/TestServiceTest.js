@@ -8,6 +8,7 @@ import UnavailableHopperIntegrationStub from '../stub/UnavailableHopperIntegrati
 import AvailableHopperIntegrationStub from '../stub/AvailableHopperIntegrationStub';
 import NoUpdatedTickersDataSourceSpy from '../spy/NoUpdatedTickersDataSourceSpy';
 import SomeUpdatedTickersDataSourceSpy from '../spy/SomeUpdatedTickersDataSourceSpy';
+import EventHandlerSpy from '../spy/EventHandlerSpy';
 
 chai.use(chaiAsPromised);
 
@@ -18,15 +19,27 @@ describe('TestService Tests', () => {
     wait: 1,
   };
 
+  let eventHandlerSpy;
+
+  beforeEach(() => {
+
+    eventHandlerSpy = new EventHandlerSpy();
+  });
+
   describe('when running a passing test', () => {
 
     let healthyDataSourceSpy;
+    let testService;
 
-    it('then the promise is resolved', () => {
+    beforeEach(() => {
 
       healthyDataSourceSpy = new HealthyDataSourceSpy();
       const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
-      const testService = new TestService(healthyDataSourceSpy, availableHopperIntegrationStub, retryOptions);
+      testService = new TestService(
+        healthyDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
+    });
+
+    it('then the promise is resolved', () => {
 
       const testDonePromise = testService.test();
 
@@ -35,9 +48,16 @@ describe('TestService Tests', () => {
 
     it('does not retry when data found immediately', async () => {
 
+      await testService.test();
+
       expect(healthyDataSourceSpy.findAllUpdatedTickersCallCount).to.equal(1);
     });
 
+    it('returns a test result message', async () => {
+
+      const result = await testService.test();
+      expect(result.msg).to.match(/Test Passed.*/);
+    });
   });
 
   describe('when test data fails to load', () => {
@@ -46,7 +66,8 @@ describe('TestService Tests', () => {
 
       const unhealthyDataSourceStub = new UnhealthyDataSourceStub();
       const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
-      const testService = new TestService(unhealthyDataSourceStub, availableHopperIntegrationStub, retryOptions);
+      const testService = new TestService(
+        unhealthyDataSourceStub, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
 
       const testDonePromise = testService.test();
 
@@ -60,7 +81,8 @@ describe('TestService Tests', () => {
 
       const healthyDataSourceStub = new HealthyDataSourceSpy();
       const unavailableHopperIntegrationStub = new UnavailableHopperIntegrationStub();
-      const testService = new TestService(healthyDataSourceStub, unavailableHopperIntegrationStub, retryOptions);
+      const testService = new TestService(
+        healthyDataSourceStub, unavailableHopperIntegrationStub, eventHandlerSpy, retryOptions);
 
       const testDonePromise = testService.test();
 
@@ -79,7 +101,8 @@ describe('TestService Tests', () => {
       noUpdatedTickersDataSourceSpy = new NoUpdatedTickersDataSourceSpy();
       availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
 
-      testService = new TestService(noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, retryOptions);
+      testService = new TestService(
+        noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
     });
 
     it('then the test fails with a rejected promise', () => {
@@ -88,6 +111,18 @@ describe('TestService Tests', () => {
 
       return expect(testDonePromise).to.eventually.be.rejected;
     });
+
+    it('returns a test result message', async () => {
+
+      return testService.test().then(() => {
+
+        expect(true).to.equal(false, 'Promise should have been rejected');
+      }, (result) => {
+
+        expect(result.msg).to.match(/Test Failed.*/);
+      });
+    });
+
 
     it('retries the provided number of times before giving up', () => {
 
@@ -102,7 +137,8 @@ describe('TestService Tests', () => {
 
     it('retries the default number of times before giving up if attempts not provided', (done) => {
 
-      testService = new TestService(noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, { wait: 1 });
+      testService = new TestService(
+        noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, { wait: 1 });
 
       testService.test().then(() => {
 
@@ -126,7 +162,7 @@ describe('TestService Tests', () => {
       someUpdatedTickersDataSourceStub = new SomeUpdatedTickersDataSourceSpy();
       const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
       testService = new TestService(
-        someUpdatedTickersDataSourceStub, availableHopperIntegrationStub, retryOptions);
+        someUpdatedTickersDataSourceStub, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
     });
 
     it('then the test fails with a rejected promise', () => {
@@ -144,6 +180,46 @@ describe('TestService Tests', () => {
       }, () => {
 
         expect(someUpdatedTickersDataSourceStub.findAllUpdatedTickersCallCount).to.equal(4);
+      });
+    });
+  });
+
+  describe('when testing for events', () => {
+
+    let healthyDataSourceSpy;
+    let testService;
+
+    beforeEach(() => {
+
+      healthyDataSourceSpy = new HealthyDataSourceSpy();
+      const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
+      testService = new TestService(
+        healthyDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
+    });
+
+    it('returns the expected number of BATCH_TICKER_PROCESSING_STARTED events to 1', async () => {
+
+      const result = await testService.test();
+      const events = result.summary.events;
+      expect(events.BATCH_TICKER_PROCESSING_STARTED.expected).to.equal(1);
+    });
+
+    describe('and test is passing', () => {
+
+      it('returns the received number of BATCH_TICKER_PROCESSING_STARTED events to 1', async () => {
+
+        eventHandlerSpy.handleEvent({ name: 'BATCH_TICKER_PROCESSING_STARTED' });
+        const result = await testService.test();
+        expect(result.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(1);
+      });
+    });
+
+    describe('and test is failing because BATCH_TICKER_PROCESSING_STARTED event was not received', () => {
+
+      it('returns the received number of BATCH_TICKER_PROCESSING_STARTED events to 0', async () => {
+
+        const result = await testService.test();
+        expect(result.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(0);
       });
     });
   });

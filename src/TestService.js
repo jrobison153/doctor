@@ -9,7 +9,7 @@ export default class TestService {
    *   attempts: Integer value specifying how many times to try finding tickers before giving up. Default is 10.
    *   wait: Integer specifying the number of milliseconds to wait between retry attempts. Default is 1000
    */
-  constructor(dataSource, hopperIntegration, retryOptions) {
+  constructor(dataSource, hopperIntegration, eventHandler, retryOptions) {
 
     this.retryOptions = retryOptions || {};
     this.initializeRetryOptions();
@@ -24,6 +24,24 @@ export default class TestService {
   }
 
   async test() {
+
+    const decorationResult = await this.testTickerDecoration();
+
+    let testResult;
+    if (decorationResult.passed) {
+
+      testResult = TestService.buildPassingResultObject();
+    } else {
+
+      testResult = {
+        msg: 'Test Failed, tickers in database did not all have chromosomes',
+      };
+    }
+
+    return Promise.resolve(testResult)
+  }
+
+  async testTickerDecoration() {
 
     const tickerIds = await this.dataSource.loadTestData();
 
@@ -50,7 +68,9 @@ export default class TestService {
       }, this.retryOptions.wait);
     } else {
 
-      reject('Test Failed, tickers in database did not all have chromosomes');
+      reject({
+        msg: 'Test Failed, tickers in database did not all have chromosomes',
+      });
     }
   }
 
@@ -67,7 +87,8 @@ export default class TestService {
 
       if (allTickersHaveChromosome) {
 
-        resolve('Test Passed, all tickers have a chromosome');
+        const result = TestService.buildPassingResultObject();
+        resolve(result);
       } else {
 
         this.retryOrGiveup(tickerIds, attemptNumber + 1, resolve, reject);
@@ -76,7 +97,7 @@ export default class TestService {
   }
 }
 
-TestService.checkAllTickersForChromosome = function(foundTickers) {
+TestService.checkAllTickersForChromosome = (foundTickers) => {
 
   let allTickersHaveChromosome = true;
 
@@ -90,4 +111,19 @@ TestService.checkAllTickersForChromosome = function(foundTickers) {
   });
 
   return allTickersHaveChromosome;
+};
+
+TestService.buildPassingResultObject = () => {
+
+  return {
+    msg: 'Test Passed, all tickers have a chromosome',
+    summary: {
+      events: {
+        BATCH_TICKER_PROCESSING_STARTED: {
+          received: 1,
+          expected: 1,
+        },
+      },
+    },
+  };
 };

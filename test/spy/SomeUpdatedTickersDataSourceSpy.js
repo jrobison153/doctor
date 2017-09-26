@@ -7,7 +7,17 @@ export default class SomeUpdatedTickersDataSourceSpy extends HealthyDataSourceSp
 
     this.findAllUpdatedTickersCallCount = this.findAllUpdatedTickersCallCount + 1;
 
-    const tickers = HealthyDataSourceSpy.tickersToReturn;
+    const tickers = [
+      {
+        chromosome: '01010101010',
+      },
+      {
+        chromosome: '01010101010',
+      },
+      {
+        chromosome: '01010101010',
+      },
+    ];
 
     delete tickers[1].chromosome;
 

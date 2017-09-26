@@ -1,5 +1,5 @@
 import requestPromise from 'request-promise';
-import { expect } from 'chai';
+import {expect} from 'chai';
 import TestService from '../../src/TestService';
 import TickerDataSource from '../../src/TickerDataSource';
 import HopperIntegration from '../../src/HopperIntegration';
@@ -16,16 +16,14 @@ describe('Doctor Acceptance Tests', () => {
     resolveWithFullResponse: true,
   };
 
-  afterEach(() => {
-
-    mongoFake.reset();
-  });
-
   describe('given a healthy Kaching system where batch processing is successful', () => {
 
     describe('when a test is executed', () => {
 
-      beforeEach(async () => {
+      let response;
+      let body;
+
+      before(async () => {
 
         const dataSource = new TickerDataSource(mongoFake);
 
@@ -33,26 +31,38 @@ describe('Doctor Acceptance Tests', () => {
 
         const requestSpy = new RequestSpy();
         const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
-
         const testService = new TestService(dataSource, hopperIntegration);
-        return server.start(testService);
+
+        await server.start(testService);
+
+        response = await requestPromise(requestOptions);
+        body = JSON.parse(response.body);
+
+        return response;
       });
 
-      afterEach(() => {
+      after(() => {
 
         server.stop();
+        mongoFake.reset();
       });
 
-      it('then an HTTP status code 200 is returned with a test status of passed', () => {
 
-        return requestPromise(requestOptions).then((response) => {
+      it('returns an HTTP status code 200', () => {
 
-          expect(response.statusCode).to.equal(200);
+        expect(response.statusCode).to.equal(200);
+      });
 
-          const body = JSON.parse(response.body);
+      it('returns a test status of passed', () => {
 
-          expect(body.testStatus).to.equal('passed');
-        });
+        expect(body.testStatus).to.equal('passed');
+      });
+
+      it('returns the BATCH_TICKER_PROCESSING_STARTED event with a count of 1', () => {
+
+        expect(body.summary.events).to.include.keys('BATCH_TICKER_PROCESSING_STARTED');
+        expect(body.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(1);
+        expect(body.summary.events.BATCH_TICKER_PROCESSING_STARTED.expected).to.equal(1);
       });
     });
   });
@@ -61,7 +71,7 @@ describe('Doctor Acceptance Tests', () => {
 
     describe('when a test is executed', () => {
 
-      beforeEach(async () => {
+      before(async () => {
 
         const fakeMongoDb = await mongoFake.MongoClient.connect();
         const fakeCollection = fakeMongoDb.collection();
@@ -83,9 +93,10 @@ describe('Doctor Acceptance Tests', () => {
         return server.start(testService);
       });
 
-      afterEach(() => {
+      after(() => {
 
         server.stop();
+        mongoFake.reset();
       });
 
       it('then an HTTP status code 200 is returned with a test status of failed', () => {
