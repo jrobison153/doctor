@@ -3,19 +3,22 @@ export default class AlwaysPassingTestServiceStub {
 
   constructor() {
 
-    this.resultsSummary = {
-      foo: {
+    this.results = [
+      {
+        success: true,
         a: 'b',
+        c: 'd',
       },
-      bar: [1, 2, 3],
-    };
+      {
+        success: true,
+        foo: 'bar',
+        baz: 100,
+      },
+    ];
   }
 
   test() {
 
-    return Promise.resolve({
-      msg: 'AlwaysPassingTestServiceStub: of course the test passed',
-      summary: this.resultsSummary,
-    });
+    return Promise.resolve(this.results);
   }
 }

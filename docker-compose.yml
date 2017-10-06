@@ -16,6 +16,8 @@ services:
        DOCTOR_DB_PORT: 27017
        DOCTOR_DB_NAME: systemintegration
        HOPPER_URL: http://hopper:8080
+       DOCTOR_REDIS_CONNECTION_HOST: redis
+       DOCTOR_REDIS_CONNECTION_PORT: 6379
        PORT: 8082
     networks:
       - kaching_internal

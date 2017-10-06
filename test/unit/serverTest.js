@@ -1,5 +1,5 @@
 import requestPromise from 'request-promise';
-import {expect} from 'chai';
+import { expect } from 'chai';
 import AlwaysPassingTestServiceStub from '../stub/AlwaysPassingTestServiceStub';
 import AlwaysFailingTestServiceStub from '../stub/AlwaysFailingTestServiceStub';
 import AlwaysSystemExceptionTestServiceStub from '../stub/AlwaysSystemExceptionTestServiceStub';
@@ -47,14 +47,9 @@ describe('Server Tests', () => {
         expect(body.testStatus).to.equal('passed');
       });
 
-      it('returns the test result msg', () => {
+      it('returns the test results', () => {
 
-        expect(body.msg).to.match(/.*AlwaysPassingTestServiceStub: of course the test passed/);
-      });
-
-      it('returns the test results summary', () => {
-
-        expect(body.summary).to.deep.equal(testServiceStub.resultsSummary);
+        expect(body.results).to.deep.equal(testServiceStub.results);
       });
     });
 

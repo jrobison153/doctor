@@ -4,6 +4,6 @@ export default class UnhealthyDataSourceStub {
 
   async loadTestData() {
 
-    return Promise.reject();
+    return Promise.reject('UnhealthyDataSourceStub failed to load test data');
   }
 }

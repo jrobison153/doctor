@@ -1,10 +1,13 @@
+/* eslint-disable no-unused-expressions */
 import requestPromise from 'request-promise';
-import {expect} from 'chai';
+import { expect } from 'chai';
 import TestService from '../../src/TestService';
 import TickerDataSource from '../../src/TickerDataSource';
 import HopperIntegration from '../../src/HopperIntegration';
 import mongoFake from '../../fake/mongo/mongoFake';
 import RequestSpy from '../spy/RequestSpy';
+import EventHandler from '../../src/EventHandler';
+import RedisClientFake from '../../fake/redis/RedisClientFake';
 
 const server = require('../../src/server');
 
@@ -15,6 +18,15 @@ describe('Doctor Acceptance Tests', () => {
     uri: 'http://localhost:8080/test',
     resolveWithFullResponse: true,
   };
+
+  let eventHandler;
+
+  before(() => {
+
+    const redisFake = new RedisClientFake();
+    eventHandler = new EventHandler(redisFake);
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+  });
 
   describe('given a healthy Kaching system where batch processing is successful', () => {
 
@@ -31,7 +43,8 @@ describe('Doctor Acceptance Tests', () => {
 
         const requestSpy = new RequestSpy();
         const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
-        const testService = new TestService(dataSource, hopperIntegration);
+
+        const testService = new TestService(dataSource, hopperIntegration, eventHandler);
 
         await server.start(testService);
 
@@ -60,9 +73,15 @@ describe('Doctor Acceptance Tests', () => {
 
       it('returns the BATCH_TICKER_PROCESSING_STARTED event with a count of 1', () => {
 
-        expect(body.summary.events).to.include.keys('BATCH_TICKER_PROCESSING_STARTED');
-        expect(body.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(1);
-        expect(body.summary.events.BATCH_TICKER_PROCESSING_STARTED.expected).to.equal(1);
+        const testResult = body.results.find((result) => {
+
+          return result.test === 'Batch Processing Started Event';
+        });
+
+        expect(testResult).to.be.ok;
+        expect(testResult.success).to.be.true;
+        expect(testResult.received).to.equal(1);
+        expect(testResult.expected).to.equal(1);
       });
     });
   });
@@ -89,7 +108,7 @@ describe('Doctor Acceptance Tests', () => {
           wait: 10,
         };
 
-        const testService = new TestService(dataSource, hopperIntegration, retryOptions);
+        const testService = new TestService(dataSource, hopperIntegration, eventHandler, retryOptions);
         return server.start(testService);
       });
 

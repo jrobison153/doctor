@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions,no-use-before-define */
 
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -26,7 +27,7 @@ describe('TestService Tests', () => {
     eventHandlerSpy = new EventHandlerSpy();
   });
 
-  describe('when running a passing test', () => {
+  describe('when ticker decoration is successful', () => {
 
     let healthyDataSourceSpy;
     let testService;
@@ -55,38 +56,54 @@ describe('TestService Tests', () => {
 
     it('returns a test result message', async () => {
 
-      const result = await testService.test();
-      expect(result.msg).to.match(/Test Passed.*/);
+      const results = await testService.test();
+
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
+
+      expect(decorationResult.msg).to.match(/Test Passed.*/);
+    });
+
+    it('returns a test success status of true', async () => {
+
+      const results = await testService.test();
+
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
+
+      expect(decorationResult.success).to.be.true;
     });
   });
 
   describe('when test data fails to load', () => {
 
-    it('then the test fails with a rejected promise', () => {
+    it('then the test fails with a success status of false', async () => {
 
       const unhealthyDataSourceStub = new UnhealthyDataSourceStub();
       const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
       const testService = new TestService(
         unhealthyDataSourceStub, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
 
-      const testDonePromise = testService.test();
+      const results = await testService.test();
 
-      return expect(testDonePromise).to.eventually.be.rejected;
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
+
+      expect(decorationResult.success).to.be.false;
     });
   });
 
   describe('when the connection to Hopper fails', () => {
 
-    it('then the test fails with a rejected promise', () => {
+    it('then the test fails with a success status of false', async () => {
 
       const healthyDataSourceStub = new HealthyDataSourceSpy();
       const unavailableHopperIntegrationStub = new UnavailableHopperIntegrationStub();
       const testService = new TestService(
         healthyDataSourceStub, unavailableHopperIntegrationStub, eventHandlerSpy, retryOptions);
 
-      const testDonePromise = testService.test();
+      const results = await testService.test();
 
-      return expect(testDonePromise).to.eventually.be.rejected;
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
+
+      return expect(decorationResult.success).to.be.false;
     });
   });
 
@@ -105,50 +122,40 @@ describe('TestService Tests', () => {
         noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
     });
 
-    it('then the test fails with a rejected promise', () => {
-
-      const testDonePromise = testService.test();
-
-      return expect(testDonePromise).to.eventually.be.rejected;
-    });
-
     it('returns a test result message', async () => {
 
-      return testService.test().then(() => {
+      const results = await testService.test();
 
-        expect(true).to.equal(false, 'Promise should have been rejected');
-      }, (result) => {
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
 
-        expect(result.msg).to.match(/Test Failed.*/);
-      });
+      expect(decorationResult.msg).to.match(/Test Failed.*/);
     });
 
+    it('returns a test success status of false', async () => {
 
-    it('retries the provided number of times before giving up', () => {
+      const results = await testService.test();
 
-      return testService.test().then(() => {
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
 
-        expect(true).to.equal(false, 'Promise should have been rejected');
-      }, () => {
-
-        expect(noUpdatedTickersDataSourceSpy.findAllUpdatedTickersCallCount).to.equal(4);
-      });
+      expect(decorationResult.success).to.be.false;
     });
 
-    it('retries the default number of times before giving up if attempts not provided', (done) => {
+    it('retries the provided number of times before giving up', async () => {
+
+      await testService.test();
+
+      expect(noUpdatedTickersDataSourceSpy.findAllUpdatedTickersCallCount).to.equal(4);
+    });
+
+    it('retries the default number of times before giving up if attempts not provided', async () => {
 
       testService = new TestService(
         noUpdatedTickersDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, { wait: 1 });
 
-      testService.test().then(() => {
+      await testService.test();
 
-        expect(true).to.equal(false, 'Promise should have been rejected');
-        done();
-      }, () => {
+      expect(noUpdatedTickersDataSourceSpy.findAllUpdatedTickersCallCount).to.equal(10);
 
-        expect(noUpdatedTickersDataSourceSpy.findAllUpdatedTickersCallCount).to.equal(10);
-        done();
-      });
     });
   });
 
@@ -165,22 +172,20 @@ describe('TestService Tests', () => {
         someUpdatedTickersDataSourceStub, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
     });
 
-    it('then the test fails with a rejected promise', () => {
+    it('then the test fails with a success status set to false', async () => {
 
-      const testDonePromise = testService.test();
+      const results = await testService.test();
 
-      return expect(testDonePromise).to.eventually.be.rejected;
+      const decorationResult = results.find(findResultByName('Ticker Decoration'));
+
+      return expect(decorationResult.success).to.be.false;
     });
 
-    it('retries the provided number of times before giving up', () => {
+    it('retries the provided number of times before giving up', async () => {
 
-      return testService.test().then(() => {
+      await testService.test();
 
-        expect(true).to.equal(false, 'Promise should have been rejected');
-      }, () => {
-
-        expect(someUpdatedTickersDataSourceStub.findAllUpdatedTickersCallCount).to.equal(4);
-      });
+      expect(someUpdatedTickersDataSourceStub.findAllUpdatedTickersCallCount).to.equal(4);
     });
   });
 
@@ -197,30 +202,52 @@ describe('TestService Tests', () => {
         healthyDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
     });
 
-    it('returns the expected number of BATCH_TICKER_PROCESSING_STARTED events to 1', async () => {
+    it('returns the expected number of batch processing started events to 1', async () => {
 
-      const result = await testService.test();
-      const events = result.summary.events;
-      expect(events.BATCH_TICKER_PROCESSING_STARTED.expected).to.equal(1);
+      const results = await testService.test();
+
+      const eventResult = results.find(findResultByName('Batch Processing Started Event'));
+
+      expect(eventResult.expected).to.equal(1);
     });
 
     describe('and test is passing', () => {
 
-      it('returns the received number of BATCH_TICKER_PROCESSING_STARTED events to 1', async () => {
+      it('returns the received number of batch processing started events to 1', async () => {
 
         eventHandlerSpy.handleEvent({ name: 'BATCH_TICKER_PROCESSING_STARTED' });
-        const result = await testService.test();
-        expect(result.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(1);
+
+        const results = await testService.test();
+        const eventResult = results.find(findResultByName('Batch Processing Started Event'));
+
+        expect(eventResult.received).to.equal(1);
       });
     });
 
-    describe('and test is failing because BATCH_TICKER_PROCESSING_STARTED event was not received', () => {
+    describe('and test is failing because batch processing started event was not received', () => {
 
-      it('returns the received number of BATCH_TICKER_PROCESSING_STARTED events to 0', async () => {
+      it('returns the received number of batch processing started events to 0', async () => {
 
-        const result = await testService.test();
-        expect(result.summary.events.BATCH_TICKER_PROCESSING_STARTED.received).to.equal(0);
+        const results = await testService.test();
+        const eventResult = results.find(findResultByName('Batch Processing Started Event'));
+
+        expect(eventResult.received).to.equal(0);
+      });
+
+      it('retries the specified number of times before giving up', async () => {
+
+        await testService.test();
+
+        expect(eventHandlerSpy.getBatchProcessingStartedEventsCallCount).to.equal(4);
       });
     });
   });
 });
+
+const findResultByName = (testName) => {
+
+  return (aResult) => {
+
+    return aResult.test && aResult.test === testName;
+  };
+};

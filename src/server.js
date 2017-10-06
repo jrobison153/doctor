@@ -35,12 +35,9 @@ function configureResources(server, testService) {
   server.post('/test', (req, resp) => {
 
     try {
-      testService.test().then((passResult) => {
+      testService.test().then((results) => {
 
-        replyTestSuccessful(resp, passResult);
-      }, (failResult) => {
-
-        replyTestFailure(resp, failResult);
+        replyTestSuccessful(resp, results);
       });
     } catch (error) {
 
@@ -49,25 +46,16 @@ function configureResources(server, testService) {
   });
 }
 
-function replyTestSuccessful(resp, result) {
+function replyTestSuccessful(resp, results) {
+
+  const isExistingFailingTest = results.some((result) => {
+
+    return result.success === false;
+  });
 
   const response = {
-    testStatus: 'passed',
-    msg: `Test completed: ${result.msg}`,
-    summary: result.summary,
-  };
-
-  resp.send(response);
-}
-
-function replyTestFailure(resp, e) {
-
-  console.error(e);
-
-  const response = {
-    testStatus: 'failed',
-    msg: 'Test failed, check logs for details',
-    summary: e.summary,
+    testStatus: isExistingFailingTest ? 'failed' : 'passed',
+    results,
   };
 
   resp.send(response);

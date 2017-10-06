@@ -3,19 +3,22 @@ export default class AlwaysFailingTestServiceStub {
 
   constructor() {
 
-    this.resultsSummary = {
-      blah: {
-        grr: 'a',
+    this.results = [
+      {
+        success: true,
+        a: 'b',
+        c: 'd',
       },
-      top: 'bottom',
-    };
+      {
+        success: false,
+        foo: 'bar',
+        baz: 100,
+      },
+    ];
   }
 
   test() {
 
-    return Promise.reject({
-      msg: 'AlwaysFailingTestServiceStub: of course the test failed',
-      summary: this.resultsSummary,
-    });
+    return Promise.resolve(this.results);
   }
 }

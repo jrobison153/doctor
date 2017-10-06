@@ -4,6 +4,6 @@ export default class UnavailableHopperIntegrationStub {
 
   batchProcessTickers() {
 
-    return Promise.reject();
+    return Promise.reject('UnavailableHopperIntegrationStub failed to do batch process tickers');
   }
 }

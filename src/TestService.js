@@ -1,3 +1,4 @@
+import clone from 'clone';
 
 export default class TestService {
 
@@ -13,8 +14,10 @@ export default class TestService {
 
     this.retryOptions = retryOptions || {};
     this.initializeRetryOptions();
+
     this.dataSource = dataSource;
     this.hopperIntegration = hopperIntegration;
+    this.eventHandler = eventHandler;
   }
 
   initializeRetryOptions() {
@@ -23,107 +26,229 @@ export default class TestService {
     this.retryOptions.wait = this.retryOptions.wait || 1000;
   }
 
+  /**
+   * Run a ticker batch process and verify that all the expected pieces are working
+   * @returns {Promise} - resolves to an array of test result objects
+   */
   async test() {
 
-    const decorationResult = await this.testTickerDecoration();
+    const finalTestStatusPromise = new Promise(async (resolve) => {
 
-    let testResult;
-    if (decorationResult.passed) {
+      const decorationResultPromise = this.testTickerDecoration();
+      const eventsEmittedResultPromise = this.testBatchStartedEventEmitted();
 
-      testResult = TestService.buildPassingResultObject();
-    } else {
+      Promise.all([decorationResultPromise, eventsEmittedResultPromise]).then((results) => {
 
-      testResult = {
-        msg: 'Test Failed, tickers in database did not all have chromosomes',
+        const decorationResult = results[0];
+        const eventsEmittedResult = results[1];
+
+        const testResult = [];
+
+        testResult.push(decorationResult);
+        testResult.push(eventsEmittedResult);
+
+        resolve(testResult);
+      }).catch((e) => {
+
+        // hmmm would we ever get here unless it was a code error, don't have a test case for it
+        console.error(e);
+      });
+    });
+
+    return finalTestStatusPromise;
+  }
+
+  async testBatchStartedEventEmitted() {
+
+    return new Promise((resolve) => {
+
+      const isExactlyOneEvent = (events) => {
+
+        let result = false;
+
+        if (events && events.length === 1) {
+          result = true;
+        }
+
+        return result;
       };
-    }
 
-    return Promise.resolve(testResult)
+      const buildBatchProcessingStartedResult = (events) => {
+
+        let safeEvents = [];
+
+        if (events) {
+
+          safeEvents = events;
+        }
+
+        return {
+          test: 'Batch Processing Started Event',
+          success: safeEvents.length === 1,
+          expected: 1,
+          received: safeEvents.length,
+        };
+      };
+
+      this.retryOrGiveup(
+        this.eventHandler.getBatchProcessingStartedEvents.bind(this.eventHandler),
+        isExactlyOneEvent,
+        buildBatchProcessingStartedResult,
+        buildBatchProcessingStartedResult,
+        1,
+        resolve,
+      );
+    });
   }
 
   async testTickerDecoration() {
 
-    const tickerIds = await this.dataSource.loadTestData();
+    try {
 
-    await this.hopperIntegration.batchProcessTickers();
+      const tickerIds = await this.dataSource.loadTestData();
 
-    return this.checkAllTickersInDbForChromosome(tickerIds);
+      await this.hopperIntegration.batchProcessTickers();
+
+      return this.checkAllTickersInDbForChromosome(tickerIds);
+    } catch (err) {
+
+      const failResult = TestService.buildFailingDecorationResultObject({
+        msg: `Test Failed: ${err}`,
+      });
+
+      return failResult;
+    }
   }
 
   async checkAllTickersInDbForChromosome(tickerIds) {
 
-    return new Promise((resolve, reject) => {
+    const curriedFindAllUpdatedTickers = (ids) => {
 
-      this.retryOrGiveup(tickerIds, 1, resolve, reject);
+      return async () => {
+
+        return this.dataSource.findAllUpdatedTickers(ids);
+      };
+    };
+
+    const areAllTickersPresentWithChromosome = (foundTickers) => {
+
+      let allTickersPresentWithChromosome = false;
+
+      if (foundTickers.length === tickerIds.length) {
+
+        allTickersPresentWithChromosome = TestService.checkAllTickersForChromosome(foundTickers);
+      }
+
+      return allTickersPresentWithChromosome;
+    };
+
+    const curriedBuildFailingDecorationResultObject = () => {
+
+      return () => {
+
+        return TestService.buildFailingDecorationResultObject({
+          msg: 'Test Failed, tickers in database did not all have chromosomes',
+        });
+      };
+    };
+
+    return new Promise((resolve) => {
+
+      this.retryOrGiveup(
+        curriedFindAllUpdatedTickers(tickerIds),
+        areAllTickersPresentWithChromosome,
+        TestService.buildPassingDecorationResultObject,
+        curriedBuildFailingDecorationResultObject(),
+        1,
+        resolve);
     });
   }
 
-  async retryOrGiveup(tickerIds, attemptNumber, resolve, reject) {
+  async retryOrGiveup(
+    asyncFunction,
+    isPassingResultFunction,
+    processPassingResultFunction,
+    processFailingResultFunction,
+    attemptNumber,
+    resolve,
+  ) {
 
     if (attemptNumber <= this.retryOptions.attempts) {
 
       setTimeout(async () => {
 
-        await this.findOrRetry(tickerIds, attemptNumber, resolve, reject);
+        await this.testAndRetry(asyncFunction,
+          isPassingResultFunction, processPassingResultFunction, processFailingResultFunction, attemptNumber, resolve);
+
       }, this.retryOptions.wait);
     } else {
 
-      reject({
-        msg: 'Test Failed, tickers in database did not all have chromosomes',
-      });
+      const failResult = processFailingResultFunction();
+      resolve(failResult);
     }
   }
 
-  async findOrRetry(tickerIds, attemptNumber, resolve, reject) {
+  async testAndRetry(
+    asyncFunction,
+    isPassingResultFunction,
+    processPassingResultFunction,
+    processFailingResultFunction,
+    attemptNumber,
+    resolve,
+  ) {
 
-    const foundTickers = await this.dataSource.findAllUpdatedTickers(tickerIds);
+    const asyncResult = await asyncFunction();
 
-    if (foundTickers.length !== tickerIds.length) {
+    if (!isPassingResultFunction(asyncResult)) {
 
-      this.retryOrGiveup(tickerIds, attemptNumber + 1, resolve, reject);
+      this.retryOrGiveup(asyncFunction,
+        isPassingResultFunction, processPassingResultFunction,
+        processFailingResultFunction, attemptNumber + 1, resolve);
     } else {
 
-      const allTickersHaveChromosome = TestService.checkAllTickersForChromosome(foundTickers);
+      const resultObject = processPassingResultFunction(asyncResult);
 
-      if (allTickersHaveChromosome) {
-
-        const result = TestService.buildPassingResultObject();
-        resolve(result);
-      } else {
-
-        this.retryOrGiveup(tickerIds, attemptNumber + 1, resolve, reject);
-      }
+      resolve(resultObject);
     }
   }
-}
 
-TestService.checkAllTickersForChromosome = (foundTickers) => {
+  static buildPassingDecorationResultObject() {
 
-  let allTickersHaveChromosome = true;
+    return {
+      test: 'Ticker Decoration',
+      msg: 'Test Passed, all tickers have a chromosome',
+      success: true,
+    };
+  }
 
-  foundTickers.forEach((ticker) => {
+  static buildFailingDecorationResultObject(baseResult) {
 
-    if (!ticker.chromosome || ticker.chromosome === '') {
+    const failResult = clone(baseResult);
 
-      console.error(`Ticker ${JSON.stringify(ticker)} did not have an expected chromosome`);
-      allTickersHaveChromosome = false;
+    failResult.test = 'Ticker Decoration';
+    failResult.success = false;
+
+    if (!failResult.msg || failResult.msg === '') {
+
+      failResult.msg = 'Test Failed with an unspecified reason';
     }
-  });
 
-  return allTickersHaveChromosome;
-};
+    return failResult;
+  }
 
-TestService.buildPassingResultObject = () => {
+  static checkAllTickersForChromosome(foundTickers) {
 
-  return {
-    msg: 'Test Passed, all tickers have a chromosome',
-    summary: {
-      events: {
-        BATCH_TICKER_PROCESSING_STARTED: {
-          received: 1,
-          expected: 1,
-        },
-      },
-    },
-  };
-};
+    let allTickersHaveChromosome = true;
+
+    foundTickers.forEach((ticker) => {
+
+      if (!ticker.chromosome || ticker.chromosome === '') {
+
+        console.error(`Ticker ${JSON.stringify(ticker)} did not have an expected chromosome`);
+        allTickersHaveChromosome = false;
+      }
+    });
+
+    return allTickersHaveChromosome;
+  }
+}
