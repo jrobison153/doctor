@@ -23,13 +23,23 @@ export default class EventHandler {
 
   getBatchProcessingStartedEvents() {
 
-    let batchProcessingStartedEvents = this.handledEvents.BATCH_TICKER_PROCESSING_STARTED;
+    return this.getEventsByName('BATCH_TICKER_PROCESSING_STARTED');
+  }
 
-    if (!batchProcessingStartedEvents) {
+  getTickerDecoratedEvents() {
 
-      batchProcessingStartedEvents = [];
+    return this.getEventsByName('TICKER_DECORATED');
+  }
+
+  getEventsByName(eventName) {
+
+    let handledEvents = this.handledEvents[eventName];
+
+    if (!handledEvents) {
+
+      handledEvents = [];
     }
 
-    return batchProcessingStartedEvents;
+    return handledEvents;
   }
 }

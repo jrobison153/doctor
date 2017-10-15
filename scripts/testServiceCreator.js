@@ -5,6 +5,9 @@ import TickerDataSource from '../src/TickerDataSource';
 import HopperIntegration from '../src/HopperIntegration';
 import TestService from '../src/TestService';
 import EventHandler from '../src/EventHandler';
+import TickerDecorationTester from '../src/TickerDecorationTester';
+import BatchProcessingStartedTester from '../src/BatchProcessingStartedTester';
+import TickersDecoratedTester from '../src/TickersDecoratedTester';
 
 const dataSource = new TickerDataSource(mongodb);
 
@@ -48,6 +51,14 @@ module.exports = () => {
 
     const eventHandler = new EventHandler(redisClient);
 
-    return new TestService(dataSource, hopperIntegration, eventHandler);
+    const decorationTester = new TickerDecorationTester(dataSource);
+    const batchProcessingStartedTester = new BatchProcessingStartedTester(eventHandler);
+    const tickersDecoratedTester = new TickersDecoratedTester(eventHandler);
+    const testers = [];
+    testers.push(decorationTester);
+    testers.push(batchProcessingStartedTester);
+    testers.push(tickersDecoratedTester);
+
+    return new TestService(dataSource, hopperIntegration, testers, {});
   });
 };

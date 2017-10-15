@@ -23,4 +23,9 @@ export default class EventHandlerSpy {
 
     return this.events.BATCH_TICKER_PROCESSING_STARTED;
   }
+
+  getTickerDecoratedEvents() {
+
+    return this.events.TICKER_DECORATED;
+  }
 }

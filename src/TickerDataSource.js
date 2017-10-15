@@ -50,7 +50,8 @@ export default class TickerDataSource {
   }
 
   /**
-   * search the database for any tickers with the provided ids
+   * search the database for any tickers with the provided ids, if no ids provided then searches for
+   * all tickers.
    *
    * @param tickerIds - Array of ids that identify tickers in the database
    * @returns {Promise.<Promise|*>} resolves to an array of tickers retrieved from the database. Can
@@ -58,14 +59,19 @@ export default class TickerDataSource {
    */
   async findAllUpdatedTickers(tickerIds) {
 
-    const tickerIdsForQuery = tickerIds.map((id) => {
+    let findQuery = {};
 
-      return { _id: new this.ObjectID(id) };
-    });
+    if (tickerIds) {
 
-    const findQuery = {
-      $or: tickerIdsForQuery,
-    };
+      const tickerIdsForQuery = tickerIds.map((id) => {
+
+        return { _id: new this.ObjectID(id) };
+      });
+
+      findQuery = {
+        $or: tickerIdsForQuery,
+      };
+    }
 
     return this.tickerCollection.find(findQuery).toArray();
   }

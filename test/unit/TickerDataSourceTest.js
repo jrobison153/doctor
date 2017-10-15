@@ -270,5 +270,11 @@ describe('TickerDataSource Tests', () => {
 
       expect(collectionSpy.lastFindQuery).to.deep.equal(expectedFindQuery);
     });
+
+    it('searches for everything if no ids provided', async () => {
+
+      await dataSource.findAllUpdatedTickers();
+      expect(collectionSpy.lastFindQuery).to.deep.equal({});
+    });
   });
 });

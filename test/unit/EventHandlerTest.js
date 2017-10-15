@@ -13,6 +13,32 @@ describe('EventHandler Tests', () => {
     handler = new EventHandler(redisFake);
   });
 
+  describe('when events have been received on the TICKER_BATCH_PROCESSING channel', () => {
+
+    it('handles those messages', () => {
+
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
+
+      const handledEvents = handler.getEventsByName('FOO_HAPPENED');
+
+      expect(handledEvents).to.have.lengthOf(2);
+    });
+  });
+
+  describe('when events have been received on channel other than TICKER_BATCH_PROCESSING', () => {
+
+    it('does not handle those messages', () => {
+
+      redisFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
+
+      const handledEvents = handler.getEventsByName('FOO_HAPPENED');
+
+      expect(handledEvents).to.have.lengthOf(0);
+    });
+  });
+
   describe('when batch processing started events have not been received', () => {
 
     it('returns an empty collection', () => {
@@ -23,43 +49,49 @@ describe('EventHandler Tests', () => {
 
   describe('when BATCH_TICKER_PROCESSING_STARTED events have been received', () => {
 
-    describe('and the topic is TICKER_BATCH_PROCESSING', () => {
+    it('returns a collection with the events in it', () => {
 
-      it('returns a collection with the events in it', () => {
+      const anEvent = {
+        name: 'BATCH_TICKER_PROCESSING_STARTED',
+        someData: 1024,
+      };
 
-        const anEvent = {
-          name: 'BATCH_TICKER_PROCESSING_STARTED',
-          someData: 1024,
-        };
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
 
-        redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
-        redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
-        redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+      const handledEvents = handler.getBatchProcessingStartedEvents();
 
-        const handledEvents = handler.getBatchProcessingStartedEvents();
-
-        expect(handledEvents).to.have.lengthOf(3);
-        expect(handledEvents).to.deep.contain(anEvent);
-      });
+      expect(handledEvents).to.have.lengthOf(3);
+      expect(handledEvents).to.deep.contain(anEvent);
     });
+  });
 
-    describe('and the topic is not TICKER_BATCH_PROCESSING', () => {
+  describe('when ticker decorated events have not been received', () => {
 
-      it('returns an empty collection', () => {
+    it('returns an empty collection', () => {
 
-        const anEvent = {
-          name: 'BATCH_TICKER_PROCESSING_STARTED',
-          someData: 1024,
-        };
+      expect(handler.getTickerDecoratedEvents()).to.have.lengthOf(0);
+    });
+  });
 
-        redisFake.publish('blah_topic', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
-        redisFake.publish('blah_topic', JSON.stringify(anEvent));
-        redisFake.publish('blah_topic', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+  describe('when the TICKER_DECORATED event has been received', () => {
 
-        const handledEvents = handler.getBatchProcessingStartedEvents();
+    it('returns a collection with the events in it', () => {
 
-        expect(handledEvents).to.have.lengthOf(0);
-      });
+      const anEvent = {
+        name: 'TICKER_DECORATED',
+        someData: 1024,
+      };
+
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+
+      const handledEvents = handler.getTickerDecoratedEvents();
+
+      expect(handledEvents).to.have.lengthOf(3);
+      expect(handledEvents).to.deep.contain(anEvent);
     });
   });
 });

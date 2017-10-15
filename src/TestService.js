@@ -1,23 +1,20 @@
-import clone from 'clone';
 
 export default class TestService {
 
   /**
    *
-   * @param dataSource
-   * @param hopperIntegration
-   * @param retryOptions  Object - valid options
+   * @param {Array} validationCommands - array of Retryable Test validation Command objects
+   * @param {Object} retryOptions - valid options
    *   attempts: Integer value specifying how many times to try finding tickers before giving up. Default is 10.
    *   wait: Integer specifying the number of milliseconds to wait between retry attempts. Default is 1000
    */
-  constructor(dataSource, hopperIntegration, eventHandler, retryOptions) {
-
-    this.retryOptions = retryOptions || {};
-    this.initializeRetryOptions();
+  constructor(dataSource, hopperIntegration, validationCommands, retryOptions) {
 
     this.dataSource = dataSource;
     this.hopperIntegration = hopperIntegration;
-    this.eventHandler = eventHandler;
+    this.validationCommands = validationCommands;
+    this.retryOptions = retryOptions || {};
+    this.initializeRetryOptions();
   }
 
   initializeRetryOptions() {
@@ -32,143 +29,52 @@ export default class TestService {
    */
   async test() {
 
-    const finalTestStatusPromise = new Promise(async (resolve) => {
-
-      const decorationResultPromise = this.testTickerDecoration();
-      const eventsEmittedResultPromise = this.testBatchStartedEventEmitted();
-
-      Promise.all([decorationResultPromise, eventsEmittedResultPromise]).then((results) => {
-
-        const decorationResult = results[0];
-        const eventsEmittedResult = results[1];
-
-        const testResult = [];
-
-        testResult.push(decorationResult);
-        testResult.push(eventsEmittedResult);
-
-        resolve(testResult);
-      }).catch((e) => {
-
-        // hmmm would we ever get here unless it was a code error, don't have a test case for it
-        console.error(e);
-      });
-    });
-
-    return finalTestStatusPromise;
-  }
-
-  async testBatchStartedEventEmitted() {
-
-    return new Promise((resolve) => {
-
-      const isExactlyOneEvent = (events) => {
-
-        let result = false;
-
-        if (events && events.length === 1) {
-          result = true;
-        }
-
-        return result;
-      };
-
-      const buildBatchProcessingStartedResult = (events) => {
-
-        let safeEvents = [];
-
-        if (events) {
-
-          safeEvents = events;
-        }
-
-        return {
-          test: 'Batch Processing Started Event',
-          success: safeEvents.length === 1,
-          expected: 1,
-          received: safeEvents.length,
-        };
-      };
-
-      this.retryOrGiveup(
-        this.eventHandler.getBatchProcessingStartedEvents.bind(this.eventHandler),
-        isExactlyOneEvent,
-        buildBatchProcessingStartedResult,
-        buildBatchProcessingStartedResult,
-        1,
-        resolve,
-      );
-    });
-  }
-
-  async testTickerDecoration() {
-
     try {
 
-      const tickerIds = await this.dataSource.loadTestData();
+      await this.dataSource.loadTestData();
 
       await this.hopperIntegration.batchProcessTickers();
 
-      return this.checkAllTickersInDbForChromosome(tickerIds);
-    } catch (err) {
+      return new Promise(async (resolve) => {
 
-      const failResult = TestService.buildFailingDecorationResultObject({
-        msg: `Test Failed: ${err}`,
+
+        const testValidationPromises = this.validationCommands.map((validationCommand) => {
+
+          return this.runRetryableTestValidation(validationCommand);
+        });
+
+        Promise.all(testValidationPromises).then((results) => {
+
+          resolve(results);
+        }).catch((e) => {
+
+          // hmmm would we ever get here unless it was a code error, don't have a test case for it
+          console.error(e);
+        });
       });
+    } catch (e) {
 
-      return failResult;
+      return [
+        {
+          success: false,
+        },
+      ];
     }
   }
 
-  async checkAllTickersInDbForChromosome(tickerIds) {
-
-    const curriedFindAllUpdatedTickers = (ids) => {
-
-      return async () => {
-
-        return this.dataSource.findAllUpdatedTickers(ids);
-      };
-    };
-
-    const areAllTickersPresentWithChromosome = (foundTickers) => {
-
-      let allTickersPresentWithChromosome = false;
-
-      if (foundTickers.length === tickerIds.length) {
-
-        allTickersPresentWithChromosome = TestService.checkAllTickersForChromosome(foundTickers);
-      }
-
-      return allTickersPresentWithChromosome;
-    };
-
-    const curriedBuildFailingDecorationResultObject = () => {
-
-      return () => {
-
-        return TestService.buildFailingDecorationResultObject({
-          msg: 'Test Failed, tickers in database did not all have chromosomes',
-        });
-      };
-    };
+  async runRetryableTestValidation(testValidationCommand) {
 
     return new Promise((resolve) => {
 
       this.retryOrGiveup(
-        curriedFindAllUpdatedTickers(tickerIds),
-        areAllTickersPresentWithChromosome,
-        TestService.buildPassingDecorationResultObject,
-        curriedBuildFailingDecorationResultObject(),
+        testValidationCommand,
         1,
         resolve);
     });
   }
 
   async retryOrGiveup(
-    asyncFunction,
-    isPassingResultFunction,
-    processPassingResultFunction,
-    processFailingResultFunction,
+    testCommand,
     attemptNumber,
     resolve,
   ) {
@@ -177,78 +83,32 @@ export default class TestService {
 
       setTimeout(async () => {
 
-        await this.testAndRetry(asyncFunction,
-          isPassingResultFunction, processPassingResultFunction, processFailingResultFunction, attemptNumber, resolve);
+        await this.testAndRetry(testCommand, attemptNumber, resolve);
 
       }, this.retryOptions.wait);
     } else {
 
-      const failResult = processFailingResultFunction();
+      const failResult = testCommand.processFailingResult();
       resolve(failResult);
     }
   }
 
   async testAndRetry(
-    asyncFunction,
-    isPassingResultFunction,
-    processPassingResultFunction,
-    processFailingResultFunction,
+    testCommand,
     attemptNumber,
     resolve,
   ) {
 
-    const asyncResult = await asyncFunction();
+    const asyncResult = await testCommand.checkResult();
 
-    if (!isPassingResultFunction(asyncResult)) {
+    if (!testCommand.isPassingResult(asyncResult)) {
 
-      this.retryOrGiveup(asyncFunction,
-        isPassingResultFunction, processPassingResultFunction,
-        processFailingResultFunction, attemptNumber + 1, resolve);
+      this.retryOrGiveup(testCommand, attemptNumber + 1, resolve);
     } else {
 
-      const resultObject = processPassingResultFunction(asyncResult);
+      const resultObject = testCommand.processPassingResult(asyncResult);
 
       resolve(resultObject);
     }
-  }
-
-  static buildPassingDecorationResultObject() {
-
-    return {
-      test: 'Ticker Decoration',
-      msg: 'Test Passed, all tickers have a chromosome',
-      success: true,
-    };
-  }
-
-  static buildFailingDecorationResultObject(baseResult) {
-
-    const failResult = clone(baseResult);
-
-    failResult.test = 'Ticker Decoration';
-    failResult.success = false;
-
-    if (!failResult.msg || failResult.msg === '') {
-
-      failResult.msg = 'Test Failed with an unspecified reason';
-    }
-
-    return failResult;
-  }
-
-  static checkAllTickersForChromosome(foundTickers) {
-
-    let allTickersHaveChromosome = true;
-
-    foundTickers.forEach((ticker) => {
-
-      if (!ticker.chromosome || ticker.chromosome === '') {
-
-        console.error(`Ticker ${JSON.stringify(ticker)} did not have an expected chromosome`);
-        allTickersHaveChromosome = false;
-      }
-    });
-
-    return allTickersHaveChromosome;
   }
 }

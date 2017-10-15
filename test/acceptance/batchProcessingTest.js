@@ -8,6 +8,9 @@ import mongoFake from '../../fake/mongo/mongoFake';
 import RequestSpy from '../spy/RequestSpy';
 import EventHandler from '../../src/EventHandler';
 import RedisClientFake from '../../fake/redis/RedisClientFake';
+import TickerDecorationTester from '../../src/TickerDecorationTester';
+import BatchProcessingStartedTester from '../../src/BatchProcessingStartedTester';
+import TickersDecoratedTester from '../../src/TickersDecoratedTester';
 
 const server = require('../../src/server');
 
@@ -25,7 +28,19 @@ describe('Doctor Acceptance Tests', () => {
 
     const redisFake = new RedisClientFake();
     eventHandler = new EventHandler(redisFake);
+
     redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+    redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
   });
 
   describe('given a healthy Kaching system where batch processing is successful', () => {
@@ -44,7 +59,20 @@ describe('Doctor Acceptance Tests', () => {
         const requestSpy = new RequestSpy();
         const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
 
-        const testService = new TestService(dataSource, hopperIntegration, eventHandler);
+        const decorationTester = new TickerDecorationTester(dataSource);
+        const batchProcessingStartedTester = new BatchProcessingStartedTester(eventHandler);
+        const tickersDecoratedTester = new TickersDecoratedTester(eventHandler);
+        const testers = [];
+        testers.push(decorationTester);
+        testers.push(batchProcessingStartedTester);
+        testers.push(tickersDecoratedTester);
+
+        const retryOptions = {
+          attempts: 5,
+          wait: 300,
+        };
+
+        const testService = new TestService(dataSource, hopperIntegration, testers, retryOptions);
 
         await server.start(testService);
 
@@ -59,7 +87,6 @@ describe('Doctor Acceptance Tests', () => {
         server.stop();
         mongoFake.reset();
       });
-
 
       it('returns an HTTP status code 200', () => {
 
@@ -83,6 +110,20 @@ describe('Doctor Acceptance Tests', () => {
         expect(testResult.received).to.equal(1);
         expect(testResult.expected).to.equal(1);
       });
+
+      it('returns the tickers decorated event test with a count equal to the number of tickers w/o a chromosome in db',
+        () => {
+
+          const testResult = body.results.find((result) => {
+
+            return result.test === 'Tickers Decorated Events';
+          });
+
+          expect(testResult).to.be.ok;
+          expect(testResult.success).to.be.true;
+          expect(testResult.received).to.equal(10);
+          expect(testResult.expected).to.equal(10);
+        });
     });
   });
 
@@ -103,12 +144,18 @@ describe('Doctor Acceptance Tests', () => {
         const requestSpy = new RequestSpy();
         const hopperIntegration = new HopperIntegration(requestSpy.request.bind(requestSpy));
 
+        const decorationTester = new TickerDecorationTester(dataSource);
+        const batchProcessingStartedTester = new BatchProcessingStartedTester(eventHandler);
+        const testers = [];
+        testers.push(decorationTester);
+        testers.push(batchProcessingStartedTester);
+
         const retryOptions = {
           attempts: 2,
           wait: 10,
         };
 
-        const testService = new TestService(dataSource, hopperIntegration, eventHandler, retryOptions);
+        const testService = new TestService(dataSource, hopperIntegration, testers, retryOptions);
         return server.start(testService);
       });
 
