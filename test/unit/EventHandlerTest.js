@@ -45,26 +45,48 @@ describe('EventHandler Tests', () => {
 
       expect(handler.getBatchProcessingStartedEvents()).to.have.lengthOf(0);
     });
+
+    it('resets the events to an empty collection', () => {
+
+      handler.clearBatchProcessingStartedEvents();
+
+      const handledEvents = handler.getBatchProcessingStartedEvents();
+
+      expect(handledEvents).to.have.lengthOf(0);
+    });
   });
 
   describe('when BATCH_TICKER_PROCESSING_STARTED events have been received', () => {
 
-    it('returns a collection with the events in it', () => {
+    const anEvent = {
+      name: 'BATCH_TICKER_PROCESSING_STARTED',
+      someData: 1024,
+    };
 
-      const anEvent = {
-        name: 'BATCH_TICKER_PROCESSING_STARTED',
-        someData: 1024,
-      };
+    beforeEach(() => {
 
       redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
       redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
       redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+    });
+
+    it('returns a collection with the events in it', () => {
 
       const handledEvents = handler.getBatchProcessingStartedEvents();
 
       expect(handledEvents).to.have.lengthOf(3);
       expect(handledEvents).to.deep.contain(anEvent);
     });
+
+    it('clears out the Batch Processing Started Events', () => {
+
+      handler.clearBatchProcessingStartedEvents();
+
+      const handledEvents = handler.getBatchProcessingStartedEvents();
+
+      expect(handledEvents).to.have.lengthOf(0);
+    });
+
   });
 
   describe('when ticker decorated events have not been received', () => {
@@ -92,6 +114,23 @@ describe('EventHandler Tests', () => {
 
       expect(handledEvents).to.have.lengthOf(3);
       expect(handledEvents).to.deep.contain(anEvent);
+    });
+
+    it('clears out the events', () => {
+
+      const anEvent = {
+        name: 'TICKER_DECORATED',
+        someData: 1024,
+      };
+
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+
+      handler.clearTickerDecoratedEvents();
+      const handledEvents = handler.getTickerDecoratedEvents();
+
+      expect(handledEvents).to.have.lengthOf(0);
     });
   });
 });

@@ -8,6 +8,7 @@ export default class RetryableTestCommandSpy {
     this.isFailing = false;
     this.name = testName;
     this.validationCallCount = 0;
+    this.resetCalled = false;
   }
 
   checkResult() {
@@ -60,5 +61,10 @@ export default class RetryableTestCommandSpy {
     }
 
     return status;
+  }
+
+  reset() {
+
+    this.resetCalled = true;
   }
 }

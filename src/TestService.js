@@ -37,7 +37,6 @@ export default class TestService {
 
       return new Promise(async (resolve) => {
 
-
         const testValidationPromises = this.validationCommands.map((validationCommand) => {
 
           return this.runRetryableTestValidation(validationCommand);
@@ -53,6 +52,8 @@ export default class TestService {
         });
       });
     } catch (e) {
+
+      console.error(e);
 
       return [
         {
@@ -89,6 +90,9 @@ export default class TestService {
     } else {
 
       const failResult = testCommand.processFailingResult();
+
+      testCommand.reset();
+
       resolve(failResult);
     }
   }
@@ -107,6 +111,8 @@ export default class TestService {
     } else {
 
       const resultObject = testCommand.processPassingResult(asyncResult);
+
+      testCommand.reset();
 
       resolve(resultObject);
     }

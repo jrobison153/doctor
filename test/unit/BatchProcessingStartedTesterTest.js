@@ -185,4 +185,14 @@ describe('BatchProcessingStartedTester Tests', () => {
       });
     });
   });
+
+  describe('when reset', () => {
+
+    it('clears all the currently handled batch BATCH_TICKER_PROCESSING_STARTED events', () => {
+
+      batchProcessingStartedTester.reset();
+
+      expect(eventHandlerSpy.clearBatchProcessingStartedEventsCalled).to.be.true;
+    });
+  });
 });

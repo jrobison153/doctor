@@ -23,10 +23,11 @@ describe('Doctor Acceptance Tests', () => {
   };
 
   let eventHandler;
+  let redisFake;
 
   before(() => {
 
-    const redisFake = new RedisClientFake();
+    redisFake = new RedisClientFake();
     eventHandler = new EventHandler(redisFake);
 
     redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
@@ -124,6 +125,33 @@ describe('Doctor Acceptance Tests', () => {
           expect(testResult.received).to.equal(10);
           expect(testResult.expected).to.equal(10);
         });
+
+      describe('and the test is executed multiple times in a row', () => {
+
+        before(async () => {
+
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+          redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+
+          response = await requestPromise(requestOptions);
+          body = JSON.parse(response.body);
+        });
+
+        it('continues to pass', () => {
+
+          expect(body.testStatus).to.equal('passed');
+        });
+      });
     });
   });
 

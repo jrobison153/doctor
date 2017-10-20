@@ -32,6 +32,11 @@ function stop() {
 
 function configureResources(server, testService) {
 
+  server.get('/health', (req, resp) => {
+
+    resp.send('ok');
+  });
+
   server.post('/test', (req, resp) => {
 
     try {

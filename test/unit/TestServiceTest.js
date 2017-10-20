@@ -22,7 +22,7 @@ describe('TestService Tests', () => {
     wait: 1,
   };
 
-  describe('when running test suite that passes immediately', () => {
+  describe('when running a passing test suite', () => {
 
     beforeEach(async () => {
 
@@ -54,11 +54,20 @@ describe('TestService Tests', () => {
       expect(decorationResult).to.be.ok;
     });
 
-    it('does not retry the command', () => {
+    it('resets the retryable command when done', () => {
 
-      expect(firstTest.validationCallCount).to.equal(1);
-      expect(secondTest.validationCallCount).to.equal(1);
+      expect(firstTest.resetCalled).to.be.true;
     });
+
+    describe('and it that passes immediately', () => {
+
+      it('does not retry the command', () => {
+
+        expect(firstTest.validationCallCount).to.equal(1);
+        expect(secondTest.validationCallCount).to.equal(1);
+      });
+    });
+
   });
 
   describe('when running a failing test suite', () => {
@@ -78,6 +87,18 @@ describe('TestService Tests', () => {
       dataSource = new HealthyDataSourceSpy();
     });
 
+    it('returns the result for the first test', async () => {
+
+      const testService = new TestService(dataSource, hopperIntegration, testSuite, { wait: 1 });
+
+      testResults = await testService.test();
+
+      const decorationResult = testResults.find(findResultByName('First Test'));
+
+      expect(decorationResult).to.be.ok;
+    });
+
+
     it('retries the validation of each test the specified number of times before giving up', async () => {
 
       const testService = new TestService(dataSource, hopperIntegration, testSuite, retryOptions);
@@ -94,6 +115,15 @@ describe('TestService Tests', () => {
       testResults = await testService.test();
 
       expect(firstTest.validationCallCount).to.equal(10);
+    });
+
+    it('resets the retryable command when done', async () => {
+
+      const testService = new TestService(dataSource, hopperIntegration, testSuite, { wait: 1 });
+
+      testResults = await testService.test();
+
+      expect(firstTest.resetCalled).to.be.true;
     });
   });
 
@@ -150,62 +180,6 @@ describe('TestService Tests', () => {
       return expect(results[0].success).to.be.false;
     });
   });
-
-  // describe('when testing for ticker decorated events', () => {
-  //
-  //   let healthyDataSourceSpy;
-  //   let testService;
-  //
-  //   beforeEach(() => {
-  //
-  //     healthyDataSourceSpy = new HealthyDataSourceSpy();
-  //     const availableHopperIntegrationStub = new AvailableHopperIntegrationStub();
-  //     testService = new TestService(
-  //       healthyDataSourceSpy, availableHopperIntegrationStub, eventHandlerSpy, retryOptions);
-  //   });
-  //
-  //   it('returns the expected number of events', async () => {
-  //
-  //     const results = await testService.test();
-  //
-  //     const eventResult = results.find(findResultByName('Ticker Decorated Events'));
-  //
-  //     expect(eventResult.expected).to.equal(3);
-  //   });
-  //
-  //   describe('and test is passing', () => {
-  //
-  //     it('returns the received number of events', async () => {
-  //
-  //       eventHandlerSpy.handleEvent({ name: 'TICKER_DECORATED' });
-  //       eventHandlerSpy.handleEvent({ name: 'TICKER_DECORATED' });
-  //       eventHandlerSpy.handleEvent({ name: 'TICKER_DECORATED' });
-  //
-  //       const results = await testService.test();
-  //       const eventResult = results.find(findResultByName('Ticker Decorated Events'));
-  //
-  //       expect(eventResult.received).to.equal(3);
-  //     });
-  //   });
-  //
-  //   describe('and test is failing because batch processing started event was not received', () => {
-  //
-  //     it('returns the received number of events', async () => {
-  //
-  //       const results = await testService.test();
-  //       const eventResult = results.find(findResultByName('Ticker Decorated Events'));
-  //
-  //       expect(eventResult.received).to.equal(0);
-  //     });
-  //
-  //     it('retries the specified number of times before giving up', async () => {
-  //
-  //       await testService.test();
-  //
-  //       expect(eventHandlerSpy.getBatchProcessingStartedEventsCallCount).to.equal(4);
-  //     });
-  //   });
-  // });
 });
 
 const findResultByName = (testName) => {

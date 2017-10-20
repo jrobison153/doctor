@@ -5,6 +5,8 @@ export default class EventHandlerSpy {
 
     this.events = {};
     this.getBatchProcessingStartedEventsCallCount = 0;
+    this.clearTickerDecoratedEventsCalled = false;
+    this.clearBatchProcessingStartedEventsCalled = false;
   }
 
   handleEvent(event) {
@@ -22,6 +24,16 @@ export default class EventHandlerSpy {
     this.getBatchProcessingStartedEventsCallCount = this.getBatchProcessingStartedEventsCallCount + 1;
 
     return this.events.BATCH_TICKER_PROCESSING_STARTED;
+  }
+
+  clearBatchProcessingStartedEvents() {
+
+    this.clearBatchProcessingStartedEventsCalled = true;
+  }
+
+  clearTickerDecoratedEvents() {
+
+    this.clearTickerDecoratedEventsCalled = true;
   }
 
   getTickerDecoratedEvents() {

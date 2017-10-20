@@ -8,12 +8,7 @@
     "close": 44.0,
     "volume": 4.47399e+07,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 43.240843133847,
-    "adjHigh": 47.517410037194,
-    "adjLow": 38.013928029755,
-    "adjClose": 41.815320832731,
-    "adjVolume": 4.47399e+07
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -24,12 +19,7 @@
     "close": 40.38,
     "volume": 1.08971e+07,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 40.807951739942,
-    "adjHigh": 40.864972631987,
-    "adjLow": 37.833361871614,
-    "adjClose": 38.375060346038,
-    "adjVolume": 1.08971e+07
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -40,12 +30,7 @@
     "close": 44.0,
     "volume": 4.7052e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 39.25888417273,
-    "adjHigh": 41.815320832731,
-    "adjLow": 38.0709489218,
-    "adjClose": 41.815320832731,
-    "adjVolume": 4.7052e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -56,12 +41,7 @@
     "close": 40.25,
     "volume": 4.2744e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 40.389798531615,
-    "adjHigh": 41.463691998455,
-    "adjLow": 38.251515079941,
-    "adjClose": 38.251515079941,
-    "adjVolume": 4.2744e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -72,12 +52,7 @@
     "close": 41.06,
     "volume": 3.4644e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 38.137473295852,
-    "adjHigh": 39.857603539198,
-    "adjLow": 38.013928029755,
-    "adjClose": 39.021297122544,
-    "adjVolume": 3.4644e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -88,12 +63,7 @@
     "close": 41.19,
     "volume": 1.2371e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 38.85023444641,
-    "adjHigh": 39.439450330871,
-    "adjLow": 38.726689180313,
-    "adjClose": 39.14484238864,
-    "adjVolume": 1.2371e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -104,12 +74,7 @@
     "close": 42.13,
     "volume": 2.9147e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 38.964276230499,
-    "adjHigh": 40.33277763957,
-    "adjLow": 38.546123022172,
-    "adjClose": 40.03816969734,
-    "adjVolume": 2.9147e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -120,12 +85,7 @@
     "close": 42.19,
     "volume": 3.083e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 39.914624431243,
-    "adjHigh": 40.807951739942,
-    "adjLow": 38.907255338454,
-    "adjClose": 40.095190589384,
-    "adjVolume": 3.083e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -136,12 +96,7 @@
     "close": 42.94,
     "volume": 2.1154e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 40.095190589384,
-    "adjHigh": 41.283125840314,
-    "adjLow": 39.800582647154,
-    "adjClose": 40.807951739942,
-    "adjVolume": 2.1154e+06
+    "split_ratio": 1.0
   },
   {
     "ticker": "A",
@@ -152,11 +107,6 @@
     "close": 44.13,
     "volume": 2.1959e+06,
     "ex-dividend": 0.0,
-    "split_ratio": 1.0,
-    "adjOpen": 41.577733782545,
-    "adjHigh": 42.765669033475,
-    "adjLow": 41.045538790128,
-    "adjClose": 41.938866098827,
-    "adjVolume": 2.1959e+06
+    "split_ratio": 1.0
   }
 ]

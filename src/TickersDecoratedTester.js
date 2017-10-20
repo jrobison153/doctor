@@ -45,4 +45,9 @@ export default class TickersDecoratedTester {
       received: events ? events.length : 0,
     };
   }
+
+  reset() {
+
+    this.eventHandler.clearTickerDecoratedEvents();
+  }
 }

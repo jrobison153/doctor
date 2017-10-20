@@ -173,4 +173,15 @@ describe('TickersDecoratedTester Tests', () => {
       });
     });
   });
+
+  describe('when resetting the tester', () => {
+
+    it('clears the decorated ticker events from the event handler', () => {
+
+      tester.reset();
+
+      expect(eventHandlerSpy.clearTickerDecoratedEventsCalled).to.be.true;
+    });
+  });
+
 });

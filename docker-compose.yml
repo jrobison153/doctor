@@ -11,6 +11,10 @@ services:
         limits:
           cpus: "1"
           memory: 1024M
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 30
     environment:
        DOCTOR_DB_HOST: mongodb
        DOCTOR_DB_PORT: 27017

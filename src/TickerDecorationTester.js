@@ -60,4 +60,8 @@ export default class TickerDecorationTester {
 
     return allTickersHaveChromosome;
   }
+
+  reset() {
+
+  }
 }

@@ -26,9 +26,19 @@ export default class EventHandler {
     return this.getEventsByName('BATCH_TICKER_PROCESSING_STARTED');
   }
 
+  clearBatchProcessingStartedEvents() {
+
+    this.handledEvents['BATCH_TICKER_PROCESSING_STARTED'] = [];
+  }
+
   getTickerDecoratedEvents() {
 
     return this.getEventsByName('TICKER_DECORATED');
+  }
+
+  clearTickerDecoratedEvents() {
+
+    this.handledEvents['TICKER_DECORATED'] = [];
   }
 
   getEventsByName(eventName) {

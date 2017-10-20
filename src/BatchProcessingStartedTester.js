@@ -47,4 +47,9 @@ export default class BatchProcessingStartedTester {
 
     return this.processPassingResult(events);
   }
+
+  reset() {
+
+    this.eventHandler.clearBatchProcessingStartedEvents();
+  }
 }
