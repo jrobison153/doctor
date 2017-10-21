@@ -80,7 +80,7 @@ export default class TestService {
     resolve,
   ) {
 
-    if (attemptNumber <= this.retryOptions.attempts) {
+    if (attemptNumber < this.retryOptions.attempts) {
 
       setTimeout(async () => {
 
@@ -89,7 +89,9 @@ export default class TestService {
       }, this.retryOptions.wait);
     } else {
 
-      const failResult = testCommand.processFailingResult();
+      const asyncResult = await testCommand.checkResult();
+
+      const failResult = testCommand.processFailingResult(asyncResult);
 
       testCommand.reset();
 

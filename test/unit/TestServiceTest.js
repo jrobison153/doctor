@@ -47,6 +47,11 @@ describe('TestService Tests', () => {
       expect(decorationResult).to.be.ok;
     });
 
+    it('passes the check result to the processPassingResult function', () => {
+
+      expect(firstTest.argPassedToProcessPassingResult).to.deep.equal(firstTest.status);
+    });
+
     it('returns the result for the second test', async () => {
 
       const decorationResult = testResults.find(findResultByName('Second Test'));
@@ -98,6 +103,14 @@ describe('TestService Tests', () => {
       expect(decorationResult).to.be.ok;
     });
 
+    it('passes the check result to the processFailingResult function', async () => {
+
+      const testService = new TestService(dataSource, hopperIntegration, testSuite, { wait: 1 });
+
+      testResults = await testService.test();
+
+      expect(firstTest.argPassedToProcessFailingResult).to.deep.equal(firstTest.status);
+    });
 
     it('retries the validation of each test the specified number of times before giving up', async () => {
 

@@ -9,15 +9,19 @@ export default class RetryableTestCommandSpy {
     this.name = testName;
     this.validationCallCount = 0;
     this.resetCalled = false;
+    this.status = {};
+    this.argPassedToProcessPassingResult = undefined;
+    this.argPassedToProcessFailingResult = undefined;
   }
 
   checkResult() {
 
     this.validationCallCount += 1;
-    const status = this.determineStatus();
-    return Promise.resolve({
-      status,
-    });
+    this.status = {
+      status: this.determineStatus(),
+    };
+
+    return Promise.resolve(this.status);
   }
 
   isPassingResult(resultObject) {
@@ -34,13 +38,17 @@ export default class RetryableTestCommandSpy {
 
   processPassingResult(resultObject) {
 
+    this.argPassedToProcessPassingResult = resultObject;
+
     return {
       test: this.name,
       status: resultObject.status,
     };
   }
 
-  processFailingResult() {
+  processFailingResult(resultObject) {
+
+    this.argPassedToProcessFailingResult = resultObject;
 
     return {
       test: this.name,
