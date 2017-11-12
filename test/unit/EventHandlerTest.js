@@ -1,24 +1,24 @@
 import { expect } from 'chai';
+import redisFakeClientFactory from 'redis-fake';
 import EventHandler from '../../src/EventHandler';
-import RedisClientFake from '../../fake/redis/RedisClientFake';
 
 describe('EventHandler Tests', () => {
 
-  let redisFake;
+  let redisClientFake;
   let handler;
 
   beforeEach(() => {
 
-    redisFake = new RedisClientFake();
-    handler = new EventHandler(redisFake);
+    redisClientFake = redisFakeClientFactory();
+    handler = new EventHandler(redisClientFake);
   });
 
   describe('when events have been received on the TICKER_BATCH_PROCESSING channel', () => {
 
     it('handles those messages', () => {
 
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'FOO_HAPPENED' }));
 
       const handledEvents = handler.getEventsByName('FOO_HAPPENED');
 
@@ -30,8 +30,8 @@ describe('EventHandler Tests', () => {
 
     it('does not handle those messages', () => {
 
-      redisFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
-      redisFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisClientFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
+      redisClientFake.publish('NON_INTERESTED_CHANNEL', JSON.stringify({ name: 'FOO_HAPPENED' }));
 
       const handledEvents = handler.getEventsByName('FOO_HAPPENED');
 
@@ -65,9 +65,9 @@ describe('EventHandler Tests', () => {
 
     beforeEach(() => {
 
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'BATCH_TICKER_PROCESSING_STARTED' }));
     });
 
     it('returns a collection with the events in it', () => {
@@ -106,9 +106,9 @@ describe('EventHandler Tests', () => {
         someData: 1024,
       };
 
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
 
       const handledEvents = handler.getTickerDecoratedEvents();
 
@@ -123,9 +123,9 @@ describe('EventHandler Tests', () => {
         someData: 1024,
       };
 
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
-      redisFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify(anEvent));
+      redisClientFake.publish('TICKER_BATCH_PROCESSING', JSON.stringify({ name: 'TICKER_DECORATED' }));
 
       handler.clearTickerDecoratedEvents();
       const handledEvents = handler.getTickerDecoratedEvents();
