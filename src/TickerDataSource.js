@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import EventEmitter from 'events';
 
-export default class TickerDataSource {
+export default class TickerDataSource extends EventEmitter {
 
   constructor(mongo) {
+
+    super();
 
     this.ObjectID = mongo.ObjectID;
     this.mongoClient = mongo.MongoClient;
@@ -25,6 +28,19 @@ export default class TickerDataSource {
   }
 
   /**
+   * adds a default chromosome`` to each ticker in the database
+   * @returns {Promise.<void>}
+   */
+  async addChromosomeToAllTickers() {
+
+    const update = { $set:
+      { chromosome: '12345' },
+    };
+
+    return this.tickerCollection.updateMany({}, update);
+  }
+
+  /**
    * Populates the database with test data from tickerData.json.
    *
    * @returns {Promise.<void>} resolves to an array of database ids for each ticker that was
@@ -41,6 +57,8 @@ export default class TickerDataSource {
 
     await TickerDataSource.checkAllTickersCorrectlyInserted(numTickersExpectedToBeInserted,
       numTickersActuallyInserted);
+
+    this.emit('TEST_DATA_LOADED');
 
     return tickers.map((ticker) => {
 

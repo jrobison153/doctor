@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-expressions */
 import requestPromise from 'request-promise';
 import { expect } from 'chai';
+import mongoFake from 'mongo-fake';
 import redisClientFakeFactory from 'redis-fake';
 import TestService from '../../src/TestService';
 import TickerDataSource from '../../src/TickerDataSource';
 import HopperIntegration from '../../src/HopperIntegration';
-import mongoFake from '../../fake/mongo/mongoFake';
 import RequestSpy from '../spy/RequestSpy';
 import EventHandler from '../../src/EventHandler';
 import TickerDecorationTester from '../../src/TickerDecorationTester';
@@ -54,6 +54,10 @@ describe('Doctor Acceptance Tests', () => {
       before(async () => {
 
         const dataSource = new TickerDataSource(mongoFake);
+        dataSource.on('TEST_DATA_LOADED', () => {
+
+          dataSource.addChromosomeToAllTickers();
+        });
 
         await dataSource.connect();
 
@@ -162,9 +166,7 @@ describe('Doctor Acceptance Tests', () => {
 
       before(async () => {
 
-        const fakeMongoDb = await mongoFake.MongoClient.connect();
-        const fakeCollection = fakeMongoDb.collection();
-        fakeCollection.setupForFailedDecoration();
+        await mongoFake.MongoClient.connect();
 
         const dataSource = new TickerDataSource(mongoFake);
 

@@ -1,6 +1,8 @@
+import mongoFake from 'mongo-fake';
 import MongoCursorStub from '../../stub/mongo/MongoCursorStub';
-import ObjectID from '../../../fake/mongo/ObjectIdFake';
 
+
+const ObjectID = mongoFake.ObjectID;
 const FIRST = 0;
 const SECOND = 1;
 const THIRD = 2;
@@ -10,23 +12,22 @@ export default class MongoCollectionSpy {
   constructor() {
 
     this.cursorStub = new MongoCursorStub();
+
     this.callStack = [];
+
     this.lastDataInserted = {};
+
     this.lastFindQuery = {};
     this.findCallCount = 0;
+
+    this.updateManyCalled = false;
+    this.lastUpdateManyFilter = undefined;
+    this.lastUpdateManyUpdate = undefined;
   }
 
   drop() {
 
     this.callStack.push('drop');
-
-    return Promise.resolve();
-  }
-
-  insertMany(data) {
-
-    this.callStack.push('insertMany');
-    this.lastDataInserted = data;
 
     return Promise.resolve();
   }
@@ -38,6 +39,23 @@ export default class MongoCollectionSpy {
     this.findCallCount = this.findCallCount + 1;
 
     return this.cursorStub;
+  }
+
+  insertMany(data) {
+
+    this.callStack.push('insertMany');
+    this.lastDataInserted = data;
+
+    return Promise.resolve();
+  }
+
+  updateMany(filter, update) {
+
+    this.updateManyCalled = true;
+    this.lastUpdateManyFilter = filter;
+    this.lastUpdateManyUpdate = update;
+
+    return Promise.resolve();
   }
 
   // ======================== non-Mongo Collection API functions below

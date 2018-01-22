@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import fs from 'fs';
@@ -11,14 +12,31 @@ describe('TickerDataSource Tests', () => {
 
   afterEach(mongoStub.reset);
 
+  let dataSource;
+  let dbStub;
+  let testDataLoadedEventEmitted;
+  let collectionSpy;
+
+  beforeEach(async () => {
+
+    dataSource = new TickerDataSource(mongoStub);
+
+    dbStub = await mongoStub.MongoClient.connect();
+    collectionSpy = dbStub.collection();
+
+    testDataLoadedEventEmitted = false;
+
+    dataSource.on('TEST_DATA_LOADED', () => {
+
+      testDataLoadedEventEmitted = true;
+    });
+  });
+
   describe('when connecting to the database', () => {
 
     const envBackup = {};
-    let dataSource;
 
     beforeEach(() => {
-
-      dataSource = new TickerDataSource(mongoStub);
 
       envBackup.DOCTOR_DB_HOST = process.env.DOCTOR_DB_HOST;
       envBackup.DOCTOR_DB_PORT = process.env.DOCTOR_DB_PORT;
@@ -111,30 +129,22 @@ describe('TickerDataSource Tests', () => {
 
     describe('and everything goes swimmingly', () => {
 
-      let collectionSpy;
       let tickerData;
-      let dbStub;
       let idsOfLoadedTickers;
 
-      async function setup() {
-
-        dbStub = await mongoStub.MongoClient.connect();
-
-        collectionSpy = dbStub.collection();
+      beforeEach(async () => {
 
         const tickersAsJson = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'tickerData.json'));
         tickerData = JSON.parse(tickersAsJson);
 
         collectionSpy.findReturnsGoodData(tickerData.length);
 
-        const dataSource = new TickerDataSource(mongoStub);
         await dataSource.connect();
+
         idsOfLoadedTickers = await dataSource.loadTestData();
-      }
+      });
 
       it('returns a collection of the inserted ticker ids', async () => {
-
-        await setup();
 
         const expectedIds = collectionSpy.cursorStubData.map((data) => {
 
@@ -147,48 +157,40 @@ describe('TickerDataSource Tests', () => {
 
       it('works on the tickers collection', async () => {
 
-        await setup();
-
         return expect(dbStub.lastCollection).to.equal('tickers');
       });
 
       it('drops the existing collection from the database first', async () => {
-
-        await setup();
 
         expect(collectionSpy.dropCalledFirst()).to.equal(true);
       });
 
       it('inserts new tickers into the database second', async () => {
 
-        await setup();
-
         expect(collectionSpy.insertManyCalledSecond()).to.equal(true);
       });
 
       it('inserts the contents of tickerData.json into the database', async () => {
-
-        await setup();
 
         expect(collectionSpy.lastDataInserted).to.deep.equal(tickerData);
       });
 
       it('reads the recently inserted tickers back from the database third', async () => {
 
-        await setup();
-
         expect(collectionSpy.findCalledThird()).to.equal(true);
+      });
+
+      it('emits a TEST_DATA_LOADED event when done', () => {
+
+        expect(testDataLoadedEventEmitted).to.be.true;
       });
     });
 
     describe('and things do not go as planned', () => {
 
-      it('fails the test data load if the number of tickers read back ' +
-        'from the db is not the same as that inserted', async () => {
+      beforeEach(async () => {
 
-        const dataSource = new TickerDataSource(mongoStub);
-        const db = await mongoStub.MongoClient.connect();
-        db.collection().findReturns([
+        dbStub.collection().findReturns([
           {
             foo: 'bar',
           },
@@ -198,22 +200,25 @@ describe('TickerDataSource Tests', () => {
         ]);
 
         await dataSource.connect();
+      });
+
+      it('fails the test data load if the number of tickers read back ' +
+        'from the db is not the same as that inserted', async () => {
 
         return expect(dataSource.loadTestData()).to.eventually.be.rejected;
+      });
+
+      it('does not emit a TEST_DATA_LOADED event', () => {
+
+        expect(testDataLoadedEventEmitted).to.be.false;
       });
     });
   });
 
   describe('when finding all updated (with a chromosome) tickers in the database', () => {
 
-    let collectionSpy;
-    let dataSource;
-
     beforeEach(async () => {
 
-      const dbStub = await mongoStub.MongoClient.connect();
-      collectionSpy = dbStub.collection();
-      dataSource = new TickerDataSource(mongoStub);
       await dataSource.connect();
     });
 
@@ -275,6 +280,36 @@ describe('TickerDataSource Tests', () => {
 
       await dataSource.findAllUpdatedTickers();
       expect(collectionSpy.lastFindQuery).to.deep.equal({});
+    });
+  });
+
+  describe('when updating each ticker with a chromosome', () => {
+
+    beforeEach(async () => {
+
+      await dataSource.connect();
+
+      await dataSource.addChromosomeToAllTickers();
+    });
+
+    it('calls the db driver updateMany function', () => {
+
+      expect(collectionSpy.updateManyCalled).to.be.true;
+    });
+
+    it('updates all chromosomes, no filter applied', async () => {
+
+      expect(collectionSpy.lastUpdateManyFilter).to.deep.equal({});
+    });
+
+    it('sets the chromosome to a bogus value', async () => {
+
+      const addChromosomeUpdate = {
+        $set:
+          { chromosome: '12345' },
+      };
+
+      expect(collectionSpy.lastUpdateManyUpdate).to.deep.equal(addChromosomeUpdate);
     });
   });
 });

@@ -1,5 +1,7 @@
+import mongoFake from 'mongo-fake';
 import MongoClientSpy from '../../spy/mongo/MongoClientSpy';
-import ObjectIdFake from '../../../fake/mongo/ObjectIdFake';
+
+const ObjectIdFake = mongoFake.ObjectID;
 
 const mongoStub = {
 
